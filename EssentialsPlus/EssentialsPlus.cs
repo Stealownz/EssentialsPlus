@@ -21,7 +21,6 @@ namespace EssentialsPlus
 		public static Config Config { get; private set; }
 		public static IDbConnection Db { get; private set; }
 		public static HomeManager Homes { get; private set; }
-		public static MuteManager Mutes { get; private set; }
 
 		public override string Author
 		{
@@ -58,7 +57,6 @@ namespace EssentialsPlus
 				ServerApi.Hooks.GameInitialize.Deregister(this, OnInitialize);
 				ServerApi.Hooks.GamePostInitialize.Deregister(this, OnPostInitialize);
 				ServerApi.Hooks.NetGetData.Deregister(this, OnGetData);
-				ServerApi.Hooks.ServerJoin.Deregister(this, OnJoin);
 			}
 			base.Dispose(disposing);
 		}
@@ -71,7 +69,6 @@ namespace EssentialsPlus
 			ServerApi.Hooks.GameInitialize.Register(this, OnInitialize);
 			ServerApi.Hooks.GamePostInitialize.Register(this, OnPostInitialize);
 			ServerApi.Hooks.NetGetData.Register(this, OnGetData);
-			ServerApi.Hooks.ServerJoin.Register(this, OnJoin);
 		}
 
 		private async void OnReload(ReloadEventArgs e)
@@ -142,11 +139,6 @@ namespace EssentialsPlus
 				HelpText = "Finds an item and/or NPC with the specified name."
 			});
 
-			Add(new Command(Permissions.FreezeTime, Commands.FreezeTime, "freezetime")
-			{
-				HelpText = "Toggles freezing the time."
-			});
-
 			Add(new Command(Permissions.HomeDelete, Commands.DeleteHome, "delhome")
 			{
 				AllowServer = false,
@@ -163,20 +155,9 @@ namespace EssentialsPlus
 				HelpText = "Teleports you to one of your home points."
 			});
 
-			Add(new Command(Permissions.KickAll, Commands.KickAll, "kickall")
-			{
-				HelpText = "Kicks everyone on the server."
-			});
-
 			Add(new Command(Permissions.LastCommand, Commands.RepeatLast, "=")
 			{
 				HelpText = "Allows you to repeat your last command."
-			});
-
-			//This will override TShock's 'mute' command
-			Add(new Command(Permissions.Mute, Commands.Mute, "mute")
-			{
-				HelpText = "Manages mutes."
 			});
 
 			Add(new Command(Permissions.PvP, Commands.PvP, "pvp")
@@ -191,11 +172,6 @@ namespace EssentialsPlus
 				HelpText = "Allows you to measure the distances between two blocks."
 			});
 
-			Add(new Command(Permissions.Send, Commands.Send, "send")
-			{
-				HelpText = "Broadcasts a message in a custom color."
-			});
-
 			Add(new Command(Permissions.Sudo, Commands.Sudo, "sudo")
 			{
 				HelpText = "Allows you to execute a command as another user."
@@ -206,11 +182,10 @@ namespace EssentialsPlus
 				HelpText = "Executes a command after a given time interval."
 			});
 
-			Add(new Command(Permissions.TpBack, Commands.Back, "back", "b")
-			{
-				AllowServer = false,
-				HelpText = "Teleports you back to your previous position after dying or teleporting."
-			});
+      Add(new Command(Permissions.TpBack, Commands.Back, "back", "b") {
+        AllowServer = false,
+        HelpText = "Teleports you back to your previous position after dying or teleporting."
+      });
 			Add(new Command(Permissions.TpDown, Commands.Down, "down")
 			{
 				AllowServer = false,
@@ -262,40 +237,9 @@ namespace EssentialsPlus
 			#endregion
 		}
 
-		private async void OnJoin(JoinEventArgs e)
-		{
-			if (e.Handled)
-			{
-				return;
-			}
-
-			TSPlayer player = TShock.Players[e.Who];
-			if (player == null)
-			{
-				return;
-			}
-
-			DateTime muteExpiration = await Mutes.GetExpirationAsync(player);
-
-			if (DateTime.UtcNow < muteExpiration)
-			{
-				player.mute = true;
-				try
-				{
-					await Task.Delay(muteExpiration - DateTime.UtcNow, player.GetPlayerInfo().MuteToken);
-					player.mute = false;
-					player.SendInfoMessage("You have been unmuted.");
-				}
-				catch (TaskCanceledException)
-				{
-				}
-			}
-		}
-
 		private void OnPostInitialize(EventArgs e)
 		{
 			Homes = new HomeManager(Db);
-			Mutes = new MuteManager(Db);
 		}
 
 		private void OnGetData(GetDataEventArgs e)
